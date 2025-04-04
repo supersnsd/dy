@@ -1,63 +1,68 @@
+# ACL4SSR_Online_OpenClash_LB.yaml
+
 port: 7890
 socks-port: 7891
-redir-port: 7892
 mode: Rule
 log-level: info
-allow-lan: false
-external-controller: 127.0.0.1:9090
-secret: ""
-dns:
-  enable: true
-  listen: 0.0.0.0:53
-  enhanced-mode: redir-host
-  nameserver:
-    - 223.5.5.5
-    - 8.8.8.8
-
+external-controller: 0.0.0.0:9090
 proxies:
-  # 在此处添加您的订阅节点，示例：
-  # - name: "Server-1"
-  #   type: ss
-  #   server: server1.example.com
-  #   port: 443
-  #   cipher: aes-256-gcm
-  #   password: "password"
 
+  # 原有节点配置（通常从订阅源自动获取）
+  # 这里需要保留原有节点配置或使用$符号引用外部节点源
+  
 proxy-groups:
-  - name: "🔁 Load-Balancing"  # 负载均衡策略组
-    type: load-balance
-    url: "http://www.gstatic.com/generate_204"
-    interval: 300
-    strategy: round-robin  # 可选值：round-robin/consistent-hashing
-    proxies:
-      - "Server-1"  # 替换为您的实际节点名称
-      - "Server-2"
-      - "Server-3"
 
-  - name: "🔀 Auto-Switch"  # 自动选择策略组（备用）
+  # 原有策略组配置
+  - name: 🚀 自动选择
     type: url-test
-    url: "http://www.gstatic.com/generate_204"
+    url: http://www.gstatic.com/generate_204
     interval: 300
-    tolerance: 50
     proxies:
-      - "Server-1"
-      - "Server-2"
-      - "Server-3"
+      - 🇭🇰 香港节点
+      - 🇹🇼 台湾节点
+      - 🇯🇵 日本节点
+      - 🇺🇸 美国节点
 
-  - name: "🌍 Proxy"  # 主策略组
+  # 新增负载均衡策略组
+  - name: ⚖️ 负载均衡-散列
+    type: load-balance
+    strategy: consistent-hashing
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    proxies:
+      - 🇭🇰 香港节点
+      - 🇹🇼 台湾节点
+      - 🇯🇵 日本节点
+      - 🇺🇸 美国节点
+    hash-key: "${dst_host}:${dst_port}"
+
+  - name: ⚖️ 负载均衡-轮询
+    type: load-balance
+    strategy: round-robin
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    proxies:
+      - 🇭🇰 香港节点
+      - 🇹🇼 台湾节点
+      - 🇯🇵 日本节点
+      - 🇺🇸 美国节点
+
+  # 原有地区分组（示例）
+  - name: 🇭🇰 香港节点
     type: select
     proxies:
-      - "🔁 Load-Balancing"
-      - "🔀 Auto-Switch"
-      - "DIRECT"
+      - "香港-01"
+      - "香港-02"
 
-  - name: "📲 Domestic"  # 国内直连
+  - name: 🇹🇼 台湾节点
     type: select
     proxies:
-      - "DIRECT"
-      - "REJECT"
+      - "台湾-01"
+      - "台湾-02"
 
 rules:
-  - DOMAIN-SUFFIX,cn,DIRECT
-  - GEOIP,CN,📲 Domestic
-  - MATCH,🌍 Proxy  # 最终回退到代理策略
+  # 保留原有规则配置
+  - DOMAIN-SUFFIX,google.com,⚖️ 负载均衡-散列
+  - DOMAIN-SUFFIX,youtube.com,⚖️ 负载均衡-轮询
+  - GEOIP,CN,DIRECT
+  - MATCH,🚀 自动选择
