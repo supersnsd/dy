@@ -1,0 +1,63 @@
+port: 7890
+socks-port: 7891
+redir-port: 7892
+mode: Rule
+log-level: info
+allow-lan: false
+external-controller: 127.0.0.1:9090
+secret: ""
+dns:
+  enable: true
+  listen: 0.0.0.0:53
+  enhanced-mode: redir-host
+  nameserver:
+    - 223.5.5.5
+    - 8.8.8.8
+
+proxies:
+  # 在此处添加您的订阅节点，示例：
+  # - name: "Server-1"
+  #   type: ss
+  #   server: server1.example.com
+  #   port: 443
+  #   cipher: aes-256-gcm
+  #   password: "password"
+
+proxy-groups:
+  - name: "🔁 Load-Balancing"  # 负载均衡策略组
+    type: load-balance
+    url: "http://www.gstatic.com/generate_204"
+    interval: 300
+    strategy: round-robin  # 可选值：round-robin/consistent-hashing
+    proxies:
+      - "Server-1"  # 替换为您的实际节点名称
+      - "Server-2"
+      - "Server-3"
+
+  - name: "🔀 Auto-Switch"  # 自动选择策略组（备用）
+    type: url-test
+    url: "http://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
+    proxies:
+      - "Server-1"
+      - "Server-2"
+      - "Server-3"
+
+  - name: "🌍 Proxy"  # 主策略组
+    type: select
+    proxies:
+      - "🔁 Load-Balancing"
+      - "🔀 Auto-Switch"
+      - "DIRECT"
+
+  - name: "📲 Domestic"  # 国内直连
+    type: select
+    proxies:
+      - "DIRECT"
+      - "REJECT"
+
+rules:
+  - DOMAIN-SUFFIX,cn,DIRECT
+  - GEOIP,CN,📲 Domestic
+  - MATCH,🌍 Proxy  # 最终回退到代理策略
